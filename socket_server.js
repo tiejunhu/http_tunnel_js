@@ -80,7 +80,7 @@ function connectPrinter(address, port) {
 
     // on printer socket close,
     // disconnect current http connection, reconnect
-    var socket_client.on('close', function(had_error) {
+    socket_client.on('close', function(had_error) {
       if (http_request) {
         http_request.end();
         connectPrinter(address, port);

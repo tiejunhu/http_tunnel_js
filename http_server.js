@@ -47,9 +47,9 @@ var server = http.createServer(function(request, response) {
       console.log('Acting as printer at ' + listen_address + ':' + port + " for " + printer);
 
       // if http connection ends, close the print server
-      request.on('end', function()) {
+      request.on('end', function() {
         server.close();
-      }
+      });
     }
     return;
   }
