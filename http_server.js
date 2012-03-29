@@ -12,6 +12,7 @@ var printers = {
   '192.168.20.112_9100': 9001
 }
 
+// ---- config ends
 
 var http = require('http');
 var net = require('net');
@@ -24,13 +25,19 @@ function createPrintServer(response) {
     socket.on('connect', function() {
       socket.pipe(response);
     });
+
+    socket.on('close', function(had_error) {
+    });    
   });
 
   return server;
 }
 
 var server = http.createServer(function(request, response) {
+
   var printer_match = request.url.match(printer_regex);
+
+  // serve printers
   if (printer_match) {
     printer = printer_match[1];
     var port = printers[printer];
@@ -38,6 +45,11 @@ var server = http.createServer(function(request, response) {
       var server = createPrintServer(response);
       server.listen(port, listen_address);
       console.log('Acting as printer at ' + listen_address + ':' + port + " for " + printer);
+
+      // if http connection ends, close the print server
+      request.on('end', function()) {
+        server.close();
+      }
     }
     return;
   }
@@ -47,6 +59,12 @@ var server = http.createServer(function(request, response) {
     var socket_client = net.connect(port, target_server, function() {
       console.log("Serving " + request.url + " to " + target_server + ":" + port);
     });
+
+    // end response if cannot connect to remote
+    socket_client.on('close', function(had_error) {
+      response.end();
+    });
+
     socket_client.pipe(response);
     request.pipe(socket_client);
   } else {

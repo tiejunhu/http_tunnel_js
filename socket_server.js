@@ -1,6 +1,3 @@
-var net = require('net');
-var http = require('http');
-
 var listen_address = null;
 var target_server = '127.0.0.1';
 var target_port = 1338;
@@ -16,6 +13,11 @@ var printers = {
   "192.168.20.112" : 9100
 }
 
+// ---- config ends
+
+var net = require('net');
+var http = require('http');
+
 function createServer(request_path) {
   var server = net.createServer(function(socket) {
     var http_request = null;
@@ -28,13 +30,21 @@ function createServer(request_path) {
         headers: { 'Connection': 'keep-alive' },
         method: 'POST'
       };
+      
       http_request = http.request(http_options, function(response) {
         response.pipe(socket);
       });
+      
       // close socket on http error
       http_request.on('error', function() {
         socket.end();
       });
+
+      // close socket on http remote close
+      http_request.on('close', function() {
+        socket.end();
+      });
+
       socket.pipe(http_request);
     });
 
@@ -62,11 +72,13 @@ function connectPrinter(address, port) {
   console.log("Connecting printer " + address + ":" + port + " to " + fullURL);
 
   var http_request = http.request(http_options, function(response) {
+
+    // connect the printer to pass the data
     var socket_client = net.connect(port, address, function() {
       console.log("Connected to printer " + address + ":" + port);
     });
 
-    // on socket close,
+    // on printer socket close,
     // disconnect current http connection, reconnect
     var socket_client.on('close', function(had_error) {
       if (http_request) {
