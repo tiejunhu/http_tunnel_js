@@ -47,7 +47,7 @@ var server = http.createServer(function(request, response) {
       console.log('Acting as printer at ' + listen_address + ':' + port + " for " + printer);
 
       // if http connection ends, close the print server
-      request.on('end', function() {
+      request.socket.on('close', function() {
         server.close();
       });
     }
@@ -61,12 +61,13 @@ var server = http.createServer(function(request, response) {
     });
 
     // end response if cannot connect to remote
-    socket_client.on('close', function(had_error) {
+    socket_client.on('error', function() {
+      console.log("cannot connect to " + target_server + ":" + port + ", ending http connection.");
       response.end();
     });
 
-    socket_client.pipe(response);
-    request.pipe(socket_client);
+    socket_client.pipe(response); // this will ends response on socket_client close
+    request.pipe(socket_client); // this will close socket_client on request ends
   } else {
     console.log("cannot serve " + request.url);
   }

@@ -18,6 +18,10 @@ var printers = {
 var net = require('net');
 var http = require('http');
 
+function fullURL(path) {
+  return "http://" + target_server + ":" + target_port + path;
+}
+
 function createServer(request_path) {
   var server = net.createServer(function(socket) {
     var http_request = null;
@@ -32,20 +36,16 @@ function createServer(request_path) {
       };
       
       http_request = http.request(http_options, function(response) {
-        response.pipe(socket);
+        response.pipe(socket); // this will close socket on response ends
       });
+      socket.pipe(http_request);
       
       // close socket on http error
       http_request.on('error', function() {
+        console.log("request to " + fullURL(request_path) + " error.");
         socket.end();
       });
 
-      // close socket on http remote close
-      http_request.on('close', function() {
-        socket.end();
-      });
-
-      socket.pipe(http_request);
     });
 
     // close http on socket close
@@ -67,9 +67,8 @@ function connectPrinter(address, port) {
     headers: { 'Connection': 'keep-alive' },
     method: 'POST'
   };
-  var fullURL = "http://" + target_server + ":" + target_port + http_options.path;
 
-  console.log("Connecting printer " + address + ":" + port + " to " + fullURL);
+  console.log("Connecting printer " + address + ":" + port + " to " + fullURL(http_options.path));
 
   var http_request = http.request(http_options, function(response) {
 
@@ -91,7 +90,7 @@ function connectPrinter(address, port) {
 
   // retry every 1 sec if cannot connect to http server
   http_request.on('error', function() {
-    console.log("Error occurs during connection with " + fullURL + ", will retry in 1s.");
+    console.log("Error occurs during connection with " + fullURL(http_options.path) + ", will retry in 1s.");
     setTimeout(function() {
       connectPrinter(address, port);
     }, 1000);
@@ -104,7 +103,7 @@ for(var port in services) {
   var request_path = services[port];
   var server = createServer(request_path);
   server.listen(port, listen_address);
-  console.log('Server running at ' + listen_address + ':' + port + " for http://" + target_server + ":" + target_port + request_path);
+  console.log('Server running at ' + listen_address + ':' + port + " for " + fullURL(request_path));
 };
 
 var index = 0;
