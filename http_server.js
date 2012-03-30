@@ -9,7 +9,7 @@ var ports = {
 
 // printers url to printer ports mapping
 var printers = {
-  '192.168.20.112_9100': 9001
+  '127.0.0.1_9100': 9001
 }
 
 // ---- config ends
@@ -21,12 +21,18 @@ var printer_regex = "/printer/(.*)"
 
 
 function createPrintServer(response) {
+  response.writeHead(200, {'Content-Type': 'application/octet-stream'});
+
+  var length = 0;
   var server = net.createServer(function(socket) {
-    socket.on('connect', function() {
-      socket.pipe(response);
+    socket.on('data', function(buffer) {
+      length += buffer.length;
+      response.write(buffer);
     });
 
     socket.on('close', function(had_error) {
+      console.log("Print server peer closed, ending response. total bytes sent: " + length);
+      response.end();
     });    
   });
 
@@ -48,6 +54,7 @@ var server = http.createServer(function(request, response) {
 
       // if http connection ends, close the print server
       request.socket.on('close', function() {
+        console.log("Print server http request socket closed, closing server.");
         server.close();
       });
     }

@@ -10,7 +10,7 @@ var services = {
 
 // printers to serve
 var printers = {
-  "192.168.20.112" : 9100
+  "127.0.0.1" : 9100
 }
 
 // ---- config ends
@@ -71,22 +71,41 @@ function connectPrinter(address, port) {
   console.log("Connecting printer " + address + ":" + port + " to " + fullURL(http_options.path));
 
   var http_request = http.request(http_options, function(response) {
-
     // connect the printer to pass the data
-    var socket_client = net.connect(port, address, function() {
-      console.log("Connected to printer " + address + ":" + port);
+
+    var socket_client = null;
+    var length = 0;
+
+    response.on('data', function(buffer) {
+        length += buffer.length;
+        if (socket_client) {
+          socket_client.write(buffer);
+        } else {
+          socket_client = net.connect(port, address, function() {
+            console.log("Connected to printer " + address + ":" + port);
+            socket_client.write(buffer);
+          });
+        }
     });
 
-    // on printer socket close,
-    // disconnect current http connection, reconnect
-    socket_client.on('close', function(had_error) {
-      if (http_request) {
-        http_request.end();
-        connectPrinter(address, port);
+    response.on('end', function() {
+      console.log("Printer http tunnel response ends, disconnect printer socket, reconnect the tunnel. total bytes: " + length);
+      if (socket_client) {
+        socket_client.end();
       }
+      connectPrinter(address, port);
     });
-    response.pipe(socket_client);
+
+    response.on('close', function() {
+      console.log("Printer http tunnel closed, reconnect. total bytes: " + length);
+      if (socket_client) {
+        socket_client.end();
+      }
+      connectPrinter(address, port);
+    });
+
   });
+
 
   // retry every 1 sec if cannot connect to http server
   http_request.on('error', function() {
