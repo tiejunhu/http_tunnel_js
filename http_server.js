@@ -4,7 +4,6 @@ var target_server = '127.0.0.1';
 
 // service url to remote port mapping
 var ports = {
-  '/service1': 1339
 };
 
 // printers url to printer ports mapping

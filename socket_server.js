@@ -1,16 +1,16 @@
-var listen_address = null;
-var target_server = '127.0.0.1';
-var target_port = 1338;
-
-// local port to remote url mapping
-var services = {
-  1336: '/service0',
-  1337: '/service1'
-};
-
-// printers to serve
-var printers = {
-  "127.0.0.1" : 9100
+var config = {
+  listen_address: null,
+  target_port: 1338,
+  target_server: '127.0.0.1',
+  // service url to remote port mapping
+  services: {
+    1336: '/service0',
+    1337: '/service1'
+  }, 
+  // printers url to printer ports mapping
+  printers: {
+    "127.0.0.1" : 9100
+  }
 }
 
 // ---- config ends
@@ -19,7 +19,17 @@ var net = require('net');
 var http = require('http');
 
 function fullURL(path) {
-  return "http://" + target_server + ":" + target_port + path;
+  return "http://" + config.target_server + ":" + config.target_port + path;
+}
+
+function httpOptions(path) {
+  return {
+    host: config.target_server,
+    port: config.target_port,
+    path: path,
+    headers: { 'Connection': 'keep-alive' },
+    method: 'POST'
+  };
 }
 
 function createServer(request_path) {
@@ -27,15 +37,7 @@ function createServer(request_path) {
     var http_request = null;
 
     socket.on('connect', function() {
-      var http_options = {
-        host: target_server,
-        port: target_port,
-        path: request_path,
-        headers: { 'Connection': 'keep-alive' },
-        method: 'POST'
-      };
-      
-      http_request = http.request(http_options, function(response) {
+      http_request = http.request(httpOptions(request_path), function(response) {
         response.pipe(socket); // this will close socket on response ends
       });
       socket.pipe(http_request);
@@ -60,17 +62,11 @@ function createServer(request_path) {
 }
 
 function connectPrinter(address, port) {
-  var http_options = {
-    host: target_server,
-    port: target_port,
-    path: "/printer/" + address + "_" + port,
-    headers: { 'Connection': 'keep-alive' },
-    method: 'POST'
-  };
+  var request_path = "/printer/" + address + "_" + port;
 
-  console.log("Connecting printer " + address + ":" + port + " to " + fullURL(http_options.path));
+  console.log("Connecting printer " + address + ":" + port + " to " + fullURL(request_path));
 
-  var http_request = http.request(http_options, function(response) {
+  var http_request = http.request(httpOptions(request_path), function(response) {
     // connect the printer to pass the data
 
     var socket_client = null;
@@ -109,7 +105,7 @@ function connectPrinter(address, port) {
 
   // retry every 1 sec if cannot connect to http server
   http_request.on('error', function() {
-    console.log("Error occurs during connection with " + fullURL(http_options.path) + ", will retry in 1s.");
+    console.log("Error occurs during connection with " + fullURL(request_path) + ", will retry in 1s.");
     setTimeout(function() {
       connectPrinter(address, port);
     }, 1000);
@@ -118,16 +114,16 @@ function connectPrinter(address, port) {
   http_request.write("ping");
 }
 
-for(var port in services) {
-  var request_path = services[port];
+for(var port in config.services) {
+  var request_path = config.services[port];
   var server = createServer(request_path);
-  server.listen(port, listen_address);
-  console.log('Server running at ' + listen_address + ':' + port + " for " + fullURL(request_path));
+  server.listen(port, config.listen_address);
+  console.log('Server running at ' + config.listen_address + ':' + port + " for " + fullURL(request_path));
 };
 
 var index = 0;
-for (var address in printers) {
-  var port = printers[address];
+for (var address in config.printers) {
+  var port = config.printers[address];
   connectPrinter(address, port, index);
   index ++;
 }
