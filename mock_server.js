@@ -3,12 +3,17 @@ var net = require('net');
 var listen_address = null;
 
 var ports = [
-  1339
+  9100
 ];
 
 function createServer() {
   var server = net.createServer(function(socket) {
-      socket.pipe(socket);
+      var size = 0;
+      socket.on('data', function(data) {
+        size += data.length;
+        socket.write(data);
+        console.log(data.length + ", " + size);
+      });
   });
   return server;
 }
