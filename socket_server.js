@@ -1,15 +1,16 @@
 var config = {
   listen_address: null,
-  target_port: 1338,
+  http_port: 1338,
+  http_server: '127.0.0.1',
   target_server: '127.0.0.1',
   // service url to remote port mapping
   services: {
-    1336: '/service0',
-    1337: '/service1'
+    '/service0': 1336,
+    '/service1': 1337
   }, 
   // printers url to printer ports mapping
   printers: {
-    "127.0.0.1" : 9100
+    "127.0.0.1_9100" : 9001
   }
 }
 
@@ -19,13 +20,13 @@ var net = require('net');
 var http = require('http');
 
 function fullURL(path) {
-  return "http://" + config.target_server + ":" + config.target_port + path;
+  return "http://" + config.http_server + ":" + config.http_port + path;
 }
 
 function httpOptions(path) {
   return {
-    host: config.target_server,
-    port: config.target_port,
+    host: config.http_server,
+    port: config.http_port,
     path: path,
     headers: { 'Connection': 'keep-alive' },
     method: 'POST'
@@ -106,6 +107,7 @@ function connectPrinter(address, port) {
   // retry every 1 sec if cannot connect to http server
   http_request.on('error', function(e) {
     console.log("Error occurs during connection with " + fullURL(request_path) + ", will retry in 1s. Error is " + e);
+    sendConfig();
     setTimeout(function() {
       connectPrinter(address, port);
     }, 1000);
@@ -117,16 +119,59 @@ function connectPrinter(address, port) {
   }, 1000);
 }
 
-for(var port in config.services) {
-  var request_path = config.services[port];
-  var server = createServer(request_path);
-  server.listen(port, config.listen_address);
-  console.log('Server running at ' + config.listen_address + ':' + port + " for " + fullURL(request_path));
-};
+var serverStarted = false;
 
-var index = 0;
-for (var address in config.printers) {
-  var port = config.printers[address];
-  connectPrinter(address, port, index);
-  index ++;
+function startServer() {
+  if (serverStarted) {
+    return;
+  }
+  serverStarted = true;
+
+  for(var request_path in config.services) {
+    var port = config.services[request_path];
+    var server = createServer(request_path);
+    server.listen(port, config.listen_address);
+    console.log('Server running at ' + config.listen_address + ':' + port + " for " + fullURL(request_path));
+  };
+
+  for (var address_port in config.printers) {
+    var ap = address_port.split('_');
+    var address = ap[0];
+    var port = ap[1];
+    connectPrinter(address, port);
+  }  
 }
+
+function sendConfig() {
+  var request_path = "/config"
+  var http_request = http.request(httpOptions(request_path), function(response) {
+    response.on('data', function(data) {
+      if (data == 'received') {
+        startServer();
+      }
+    })
+  });
+  // http_request.setEncoding('utf8');
+  http_request.write(JSON.stringify(config));
+ 
+  http_request.on('error', function(e) {
+    console.log("Error occurs sending config to " + fullURL(request_path) + ", will retry in 1s. Error is " + e);
+    http_request.end();
+    setTimeout(function() {
+      sendConfig();
+    }, 1000);
+  });
+}
+
+sendConfig();
+
+var tty = require("tty");
+
+process.openStdin().on("keypress", function(chunk, key) {
+  if(key && key.name === "c" && key.ctrl) {
+    console.log("bye bye");
+    process.exit();
+  }
+});
+
+tty.setRawMode(true);

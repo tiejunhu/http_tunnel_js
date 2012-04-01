@@ -1,15 +1,11 @@
 var config = {
   listen_address: null,
   listen_port: 1338,
-  target_server: '127.0.0.1',
-  // service url to remote port mapping
-  services: {
-    '/service1': 9100
-  }, 
-  // printers url to printer ports mapping
-  printers: {
-    '127.0.0.1_9100': 9001
-  }
+
+  target_server: null,
+  services: null, 
+  printers: null,
+  received: false
 }
 
 // ---- config ends
@@ -83,9 +79,32 @@ function serveSocket(request, response) {
   }  
 }
 
-var server = http.createServer(function(request, response) {
+function readConfig(request, response) {
+  request.setEncoding('utf8');
+  request.on('data', function(data) {
+    var obj = JSON.parse(data);
+    config.target_server = obj.target_server;
+    config.services = obj.services;
+    config.printers = obj.printers;
+    console.log("received config, target_server: " + obj.target_server);
+    console.log("received config, services: " + JSON.stringify(obj.services));
+    console.log("received config, printers: " + JSON.stringify(obj.printers));    
+    config.received = true;
+    response.end("received");
+  });
+}
 
+var server = http.createServer(function(request, response) {
   response.writeHead(200, {'Content-Type': 'application/octet-stream'});
+
+  if (request.url == '/config') {
+    readConfig(request, response);
+    return;
+  }
+
+  if (!config.received) {
+    return;
+  }
 
   var printer_match = request.url.match(printer_regex);
 
