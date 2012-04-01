@@ -104,14 +104,17 @@ function connectPrinter(address, port) {
 
 
   // retry every 1 sec if cannot connect to http server
-  http_request.on('error', function() {
-    console.log("Error occurs during connection with " + fullURL(request_path) + ", will retry in 1s.");
+  http_request.on('error', function(e) {
+    console.log("Error occurs during connection with " + fullURL(request_path) + ", will retry in 1s. Error is " + e);
     setTimeout(function() {
       connectPrinter(address, port);
     }, 1000);
   });
 
   http_request.write("ping");
+  setInterval(function() {
+    http_request.write("ping");
+  }, 1000);
 }
 
 for(var port in config.services) {
