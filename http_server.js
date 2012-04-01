@@ -72,7 +72,7 @@ function serveSocket(request, response) {
     });
 
     socket_client.on('end', function() {
-      console.log("connection to " + config.target_server + ":" + port + "closed, ending http connection.");
+      console.log("connection to " + config.target_server + ":" + port + " closed, ending http connection.");
       response.end();
     });
 
