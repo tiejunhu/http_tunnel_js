@@ -63,55 +63,23 @@ function createServer(request_path) {
   return server;
 }
 
-function connectPrinter(address, port) {
+function connectPrinterToHttpServer(address, port, socket)
+{
   var request_path = "/printer/" + address + "_" + port;
-
   console.log("Connecting printer " + address + ":" + port + " to " + fullURL(request_path));
-
   var http_request = http.request(httpOptions(request_path), function(response) {
-    // connect the printer to pass the data
-
-    var socket_client = null;
-    var length = 0;
-
-    response.on('data', function(buffer) {
-        length += buffer.length;
-        if (socket_client) {
-          socket_client.write(buffer);
-        } else {
-          socket_client = net.connect(port, address, function() {
-            console.log("Connected to printer " + address + ":" + port);
-            socket_client.write(buffer);
-          });
-        }
-    });
-
-    function reconnectPrinter() {
-      if (socket_client) {
-        socket_client.end();
-      }
-      connectPrinter(address, port);
-    }
-
+    response.pipe(socket);
     response.on('end', function() {
-      console.log("Printer http tunnel response ends, disconnect printer socket, reconnect the tunnel. total bytes: " + length);
-      reconnectPrinter();
+      console.log("Printer http tunnel response ends, reconnecting.");
+      connectPrinterToHttpServer(address, port, socket);
     });
-
-    response.on('close', function() {
-      console.log("Printer http tunnel closed, reconnect. total bytes: " + length);
-      reconnectPrinter();
-    });
-
   });
 
-
-  // retry every 1 sec if cannot connect to http server
   http_request.on('error', function(e) {
     console.log("Error occurs during connection with " + fullURL(request_path) + ", will retry in 1s. Error is " + e);
     configConfirmed = false;
     setTimeout(function() {
-      connectPrinter(address, port);
+      connectPrinterToHttpServer(address, port, socket);
     }, 1000);
   });
 
@@ -119,6 +87,20 @@ function connectPrinter(address, port) {
   setInterval(function() {
     http_request.write("ping");
   }, 1000);
+}
+
+function connectPrinter(address, port) {
+  socket_client = net.connect(port, address, function() {
+    console.log("Connected to printer " + address + ":" + port);
+    connectPrinterToHttpServer(address, port, socket_client);
+  });
+
+  socket_client.on('error', function(e) {
+    console.log("Connection to printer " + address + ":" + port + " error, reconnect: " + e);
+    setTimeout(function() {
+      connectPrinter(address, port);
+    }, 1000);
+  });  
 }
 
 var serverStarted = false;
