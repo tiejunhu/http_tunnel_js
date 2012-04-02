@@ -30,6 +30,7 @@ function httpOptions(path) {
     host: config.http_server,
     port: config.http_port,
     path: path,
+    agent: false,
     headers: { 'Connection': 'keep-alive' },
     method: 'POST'
   };
