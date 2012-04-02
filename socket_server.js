@@ -14,6 +14,8 @@ var config = {
   }
 }
 
+var configConfirmed = false;
+
 // ---- config ends
 
 var net = require('net');
@@ -107,7 +109,7 @@ function connectPrinter(address, port) {
   // retry every 1 sec if cannot connect to http server
   http_request.on('error', function(e) {
     console.log("Error occurs during connection with " + fullURL(request_path) + ", will retry in 1s. Error is " + e);
-    sendConfig();
+    configConfirmed = false;
     setTimeout(function() {
       connectPrinter(address, port);
     }, 1000);
@@ -142,36 +144,34 @@ function startServer() {
   }  
 }
 
-function sendConfig() {
+
+function _sendConfig() {
+  if (configConfirmed) {
+    return;
+  }
+
   var request_path = "/config"
   var http_request = http.request(httpOptions(request_path), function(response) {
     response.on('data', function(data) {
       if (data == 'received') {
-        startServer();
+        configConfirmed = true;
       }
     })
   });
   // http_request.setEncoding('utf8');
   http_request.write(JSON.stringify(config));
- 
   http_request.on('error', function(e) {
-    console.log("Error occurs sending config to " + fullURL(request_path) + ", will retry in 1s. Error is " + e);
-    http_request.end();
-    setTimeout(function() {
-      sendConfig();
-    }, 1000);
+    console.log("Error occurs _sending config, will retry in 1s. Error is " + e);
   });
+  return http_request;  
 }
 
+function sendConfig() {
+  _sendConfig();
+  setInterval(function() {
+    _sendConfig();
+  }, 100);
+}
+
+startServer();
 sendConfig();
-
-var tty = require("tty");
-
-process.openStdin().on("keypress", function(chunk, key) {
-  if(key && key.name === "c" && key.ctrl) {
-    console.log("bye bye");
-    process.exit();
-  }
-});
-
-tty.setRawMode(true);
