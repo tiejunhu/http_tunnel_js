@@ -84,11 +84,15 @@ function readConfig(request, response) {
   request.on('data', function(data) {
     var obj = JSON.parse(data);
     config.target_server = obj.target_server;
-    config.services = obj.services;
+    if (obj.services2) {
+      config.services = obj.services2;
+    } else {
+      config.services = obj.services;
+    }
     config.printers = obj.printers;
-    console.log("received config, target_server: " + obj.target_server);
-    console.log("received config, services: " + JSON.stringify(obj.services));
-    console.log("received config, printers: " + JSON.stringify(obj.printers));    
+    console.log("received config, target_server: " + config.target_server);
+    console.log("received config, services: " + JSON.stringify(config.services));
+    console.log("received config, printers: " + JSON.stringify(config.printers));    
     config.received = true;
     response.end("received");
   });

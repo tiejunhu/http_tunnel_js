@@ -7,6 +7,12 @@ var config = {
   services: {
     '/service0': 1336,
     '/service1': 1337
+  },
+  // set services2 to map services to different ports on http_server
+  // set services2 as null to use above services
+  services2: {
+    '/service0': 1338,
+    '/service1': 1339
   }, 
   // printers url to printer ports mapping
   printers: {
