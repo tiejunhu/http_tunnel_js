@@ -51,14 +51,6 @@ function createServer(request_path) {
         console.log("request to " + fullURL(request_path) + " error.");
         socket.end();
       });
-
-    });
-
-    // close http on socket close
-    socket.on('close', function(had_error) {
-      if (http_request) {
-        http_request.end();
-      }
     });
   });
 
@@ -88,20 +80,21 @@ function connectPrinter(address, port) {
         }
     });
 
-    response.on('end', function() {
-      console.log("Printer http tunnel response ends, disconnect printer socket, reconnect the tunnel. total bytes: " + length);
+    function reconnectPrinter() {
       if (socket_client) {
         socket_client.end();
       }
       connectPrinter(address, port);
+    }
+
+    response.on('end', function() {
+      console.log("Printer http tunnel response ends, disconnect printer socket, reconnect the tunnel. total bytes: " + length);
+      reconnectPrinter();
     });
 
     response.on('close', function() {
       console.log("Printer http tunnel closed, reconnect. total bytes: " + length);
-      if (socket_client) {
-        socket_client.end();
-      }
-      connectPrinter(address, port);
+      reconnectPrinter();
     });
 
   });
