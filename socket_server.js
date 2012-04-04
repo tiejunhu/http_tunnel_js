@@ -3,6 +3,10 @@ var config = {
   http_port: 1338,
   http_server: '127.0.0.1',
   target_server: '127.0.0.1',
+  // proxy server settings
+  use_proxy: false,
+  proxy_server: '127.0.0.1',
+  proxy_port: 8080,
   // service url to remote port mapping
   services: {
     '/service0': 1336,
@@ -32,14 +36,28 @@ function fullURL(path) {
 }
 
 function httpOptions(path) {
-  return {
-    host: config.http_server,
-    port: config.http_port,
-    path: path,
-    agent: false,
-    headers: { 'Connection': 'keep-alive' },
-    method: 'POST'
-  };
+  if (config.use_proxy) {
+    return {
+      host: config.proxy_server,
+      port: config.proxy_port,
+      path: 'http://' + config.http_server + ":" + config.http_port + path,
+      agent: false,
+      headers: {
+        'Connection': 'keep-alive',
+        'Host': config.http_server
+      },
+      method: 'POST'
+    }
+  } else {
+    return {
+      host: config.http_server,
+      port: config.http_port,
+      path: path,
+      agent: false,
+      headers: { 'Connection': 'keep-alive' },
+      method: 'POST'
+    };    
+  }
 }
 
 function createServer(request_path) {
