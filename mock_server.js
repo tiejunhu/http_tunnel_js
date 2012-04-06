@@ -10,7 +10,7 @@ function createServer() {
       var size = 0;
       socket.on('data', function(data) {
         size += data.length;
-        socket.write(data);
+        socket.write(data, null);
         console.log(data.length + ", " + size);
       });
   });

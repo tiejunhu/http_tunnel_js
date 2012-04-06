@@ -1,10 +1,13 @@
 var vows = require('vows'),
     assert = require('assert'),
     net = require('net'),
+    fs = require('fs'),
+    path = require('path'),
     hs = require('../http_server'),
-    ss = require('../socket_server');
+    ss = require('../socket_server'),
+    ms = require('../mock_server');
 
-var suite = vows.describe('subject');
+var suite = vows.describe('test_send_file_over_http');
 
 var http_server = "127.0.0.1", 
     http_port = 9000;
@@ -18,12 +21,13 @@ ss.config.http_port = http_port;
 ss.config.target_server = "127.0.0.1";
 ss.config.use_proxy = false;
 ss.config.services = { '/service0': 9001 };
-ss.config.services2 = null;
+ss.config.services2 = { '/service0': 9002 };
 ss.config.printers = null;
 
-console.log = function(d) {
+ms.config.port = 9002;
+ms.config.listen_address = "127.0.0.1";
 
-}
+console.log = function(d) {}
 
 suite.addBatch({
   'start http server': {
@@ -60,9 +64,19 @@ suite.addBatch({
     },
     'ss_started': function() {
       assert.deepEqual(hs.config.target_server, ss.config.target_server, "target_server");
-      assert.deepEqual(hs.config.services, ss.config.services, "services");
+      assert.deepEqual(hs.config.services, ss.config.services2, "services");
       assert(hs.config.printers == null, "printers");
       assert(hs.config.received, "received");
+    }
+  }
+});
+
+suite.addBatch({
+  'start mock server': {
+    topic: function() {
+      ms.start(this.callback);
+    },
+    'ms_started': function() {
     }
   }
 });
@@ -78,7 +92,55 @@ suite.addBatch({
       connect(this.callback);
     },
     'connected': function(client) {
-      client.end('ping');
+      client.end('testtest');
+    }
+  }
+});
+
+function testSendData(server_address, port, callback)
+{
+  var sent_data_length = 0;
+  var received_data_length = 0;
+
+  var client = net.connect(port, server_address, function() {
+      fs.readFile(path.join(path.dirname(module.filename), 'test_bin_data'), function(err, data) {
+        sent_data_length = data.length;
+        client.write(data, null);
+      });
+  });
+
+  client.on('data', function(data) {
+    received_data_length += data.length;
+    if (received_data_length >= sent_data_length) {
+      client.end();
+    }
+  });
+
+  client.on('end', function() {
+    if (callback) {
+      callback(sent_data_length, received_data_length);    
+    }
+  });  
+}
+
+suite.addBatch({
+  'test mock server': {
+    topic: function() {
+      testSendData('127.0.0.1', 9002, this.callback);
+    },
+    'mock server test': function(sent_data_length, received_data_length) {
+      assert.equal(received_data_length, sent_data_length);
+    }
+  }
+});
+
+suite.addBatch({
+  'test socket server': {
+    topic: function() {
+      testSendData('127.0.0.1', 9001, this.callback);
+    },
+    'socket server test': function(sent_data_length, received_data_length) {
+      assert.equal(received_data_length, sent_data_length);
     }
   }
 });
