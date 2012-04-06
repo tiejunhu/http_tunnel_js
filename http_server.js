@@ -147,5 +147,5 @@ exports.config = config;
 
 // run alone
 if (!module.parent) {
-  startHttpServer();
+  start();
 }
