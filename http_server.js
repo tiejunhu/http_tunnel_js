@@ -135,10 +135,10 @@ function start(callback) {
 }
 
 function stop(callback) {
-  server.on('close', function() {
-    callback();
-  })
   server.close();
+  if(callback) {
+    callback();    
+  }
 }
 
 exports.start = start;
