@@ -1,1 +1,2 @@
-vows --spec test/*.js
+vows --spec test/test_send_file_over_http.js
+vows --spec test/test_print_over_http.js

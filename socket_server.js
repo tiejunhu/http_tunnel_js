@@ -130,13 +130,15 @@ function startServer() {
   }
   serverStarted = true;
 
-  for(var request_path in config.services) {
-    var port = config.services[request_path];
-    var server = createServer(request_path);
-    server.listen(port, config.listen_address);
-    console.log('Server running at ' + config.listen_address + ':' + port + " for " + fullURL(request_path));
-    servers.push(server);
-  };
+  if (config.services) {
+    for(var request_path in config.services) {
+      var port = config.services[request_path];
+      var server = createServer(request_path);
+      server.listen(port, config.listen_address);
+      console.log('Server running at ' + config.listen_address + ':' + port + " for " + fullURL(request_path));
+      servers.push(server);
+    };    
+  }
 
   if (config.printers) {
     for (var address_port in config.printers) {
