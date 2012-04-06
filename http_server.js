@@ -27,12 +27,14 @@ function createPrintServer(port, response) {
     socket.on('close', function(had_error) {
       console.log("Print server peer closed, ending response. total bytes sent: " + length);
       response.end();
+      server.close();
     });    
   });
 
   server.on('error', function(e) {
-    console.log("Print server error, ending response. total bytes sent: " + length);
+    console.log("Print server error, " + e + ", ending response. total bytes sent: " + length);
     response.end();    
+    server.close();
   });
   
   server.listen(port, config.listen_address);
@@ -134,11 +136,8 @@ function start(callback) {
   });
 }
 
-function stop(callback) {
+function stop() {
   server.close();
-  if(callback) {
-    callback();    
-  }
 }
 
 exports.start = start;

@@ -148,10 +148,10 @@ suite.addBatch({
 suite.addBatch({
   'close socket server': {
     topic: function() {
-      ss.stop(this.callback);
+      ss.stop();
+      return 1;
     },
-    'closed': function() {
-      console.log("closed");
+    'closed': function(topic) {
     }
   }
 });
@@ -159,9 +159,10 @@ suite.addBatch({
 suite.addBatch({
   'close http server': {
     topic: function() {
-      hs.stop(this.callback);
+      hs.stop();
+      return 1;
     },
-    'closed': function() {
+    'closed': function(topic) {
     }
   }
 })

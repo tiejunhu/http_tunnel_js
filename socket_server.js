@@ -89,7 +89,7 @@ function connectPrinterToHttpServer(address, port, socket)
     response.pipe(socket);
     response.on('end', function() {
       console.log("Printer http tunnel response ends, reconnecting.");
-      connectPrinterToHttpServer(address, port, socket);
+      connectPrinter(address, port);
     });
   });
 
@@ -167,7 +167,6 @@ function _sendConfig(configCallback) {
       }
     })
   });
-  // http_request.setEncoding('utf8');
   http_request.write(JSON.stringify(config));
   http_request.on('error', function(e) {
     console.log("Error occurs _sending config, will retry in 1s. Error is " + e);
@@ -189,14 +188,11 @@ function start(configCallback) {
   sendConfig(configCallback);  
 }
 
-function stop(callback) {
+function stop() {
   clearInterval(configInterval);
   for (var index in servers) {
     var server = servers[index];
     server.close();
-  }
-  if (callback) {
-    callback();
   }
 }
 

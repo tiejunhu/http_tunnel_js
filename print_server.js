@@ -2,7 +2,8 @@ var net = require('net');
 
 var config = {
   listen_address: null,
-  port: 9100
+  port: 9100,
+  callback: null
 };
 
 function createServer() {
@@ -10,8 +11,11 @@ function createServer() {
       var size = 0;
       socket.on('data', function(data) {
         size += data.length;
-        socket.write(data, null);
-        console.log(data.length + ", " + size);
+      });
+      socket.on('end', function() {
+        if (config.callback) {
+          config.callback(size);
+        }
       });
   });
   return server;
@@ -19,14 +23,13 @@ function createServer() {
 
 var server;
 
-function start(callback) {
+function start(listen_callback) {
   server = createServer();
   server.listen(config.port, config.listen_address, function() {
-    if (callback) {
-      callback();
+    if (listen_callback) {
+      listen_callback();
     }
   });
-  console.log('Mock echo server running at ' + config.listen_address + ':' + config.port);
 }
 
 function stop() {
