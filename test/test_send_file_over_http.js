@@ -5,20 +5,20 @@ var vows = require('vows'),
 
 var suite = vows.describe('subject');
 
-var http_server, http_port;
+var http_server = "127.0.0.1", 
+    http_port = 1338;
+
+hs.config.listen_address = http_server;
+hs.config.listen_port = http_port;
 
 suite.addBatch({
   'start http server': {
     topic: function() {
-      hs.startHttpServer(this.callback);
+      hs.start(this.callback);
     },
     'started': function(address, port) {
-      http_server = address;
-      if (address == null) {
-        http_server = "127.0.0.1";
-      }
-      http_port = port;
-      assert.isNotZero(port);
+      assert.equal(address, http_server);
+      assert.equal(port, http_port);
     }
   }
 });
@@ -38,6 +38,16 @@ suite.addBatch({
     }
   }
 });
+
+suite.addBatch({
+  'close server': {
+    topic: function() {
+      hs.stop(this.callback);
+    },
+    'closed': function() {
+    }
+  }
+})
 
 
 suite.run();
