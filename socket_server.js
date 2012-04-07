@@ -89,7 +89,7 @@ function connectPrinterToHttpServer(address, port, socket)
     response.pipe(socket);
     response.on('end', function() {
       console.log("Printer http tunnel response ends, reconnecting.");
-      connectPrinterToHttpServer(address, port, socket);
+      connectPrinter(address, port);
     });
   });
 
@@ -122,6 +122,7 @@ function connectPrinter(address, port) {
 }
 
 var serverStarted = false;
+var servers = [];
 
 function startServer() {
   if (serverStarted) {
@@ -129,23 +130,28 @@ function startServer() {
   }
   serverStarted = true;
 
-  for(var request_path in config.services) {
-    var port = config.services[request_path];
-    var server = createServer(request_path);
-    server.listen(port, config.listen_address);
-    console.log('Server running at ' + config.listen_address + ':' + port + " for " + fullURL(request_path));
-  };
+  if (config.services) {
+    for(var request_path in config.services) {
+      var port = config.services[request_path];
+      var server = createServer(request_path);
+      server.listen(port, config.listen_address);
+      console.log('Server running at ' + config.listen_address + ':' + port + " for " + fullURL(request_path));
+      servers.push(server);
+    };    
+  }
 
-  for (var address_port in config.printers) {
-    var ap = address_port.split('_');
-    var address = ap[0];
-    var port = ap[1];
-    connectPrinter(address, port);
-  }  
+  if (config.printers) {
+    for (var address_port in config.printers) {
+      var ap = address_port.split('_');
+      var address = ap[0];
+      var port = ap[1];
+      connectPrinter(address, port);
+    }      
+  }
 }
 
 
-function _sendConfig() {
+function _sendConfig(configCallback) {
   if (configConfirmed) {
     return;
   }
@@ -155,10 +161,12 @@ function _sendConfig() {
     response.on('data', function(data) {
       if (data == 'received') {
         configConfirmed = true;
+        if (configCallback) {
+          configCallback();
+        }
       }
     })
   });
-  // http_request.setEncoding('utf8');
   http_request.write(JSON.stringify(config));
   http_request.on('error', function(e) {
     console.log("Error occurs _sending config, will retry in 1s. Error is " + e);
@@ -166,12 +174,33 @@ function _sendConfig() {
   return http_request;  
 }
 
-function sendConfig() {
-  _sendConfig();
-  setInterval(function() {
-    _sendConfig();
+var configInterval;
+
+function sendConfig(configCallback) {
+  _sendConfig(configCallback);
+  configInterval = setInterval(function() {
+    _sendConfig(configCallback);
   }, 100);
 }
 
-startServer();
-sendConfig();
+function start(configCallback) {
+  startServer();
+  sendConfig(configCallback);  
+}
+
+function stop() {
+  clearInterval(configInterval);
+  for (var index in servers) {
+    var server = servers[index];
+    server.close();
+  }
+}
+
+exports.start = start;
+exports.stop = stop;
+exports.config = config;
+
+// run alone
+if (!module.parent) {
+  start();
+}

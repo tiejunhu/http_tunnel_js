@@ -15,43 +15,69 @@ var net = require('net');
 
 var printer_regex = "/printer/(.*)"
 
-
-function createPrintServer(port, response) {
-  var length = 0;
-  var server = net.createServer(function(socket) {
-    socket.on('data', function(buffer) {
-      length += buffer.length;
-      response.write(buffer);
-    });
-
-    socket.on('close', function(had_error) {
-      console.log("Print server peer closed, ending response. total bytes sent: " + length);
-      response.end();
-    });    
-  });
-
-  server.on('error', function(e) {
-    console.log("Print server error, ending response. total bytes sent: " + length);
-    response.end();    
-  });
-  
-  server.listen(port, config.listen_address);
-
-  return server;
-}
+var printServers = {};
+var printServersSockets = {};
+var printServersQueue = {};
 
 function servePrinter(printer, request, response) {
-    var port = config.printers[printer];
-    if (port) {
-      var server = createPrintServer(port, response);
-      console.log('Acting as printer at ' + config.listen_address + ':' + port + " for " + printer);
+  if (printServersQueue[printer] == null) {
+    setTimeout(function() {
+      servePrinter(printer, request, response);
+    }, 0);
+    return;
+  }
 
-      // if http connection ends, close the print server
-      request.socket.on('close', function() {
-        console.log("Print server http request socket closed, closing server.");
-        server.close();
+  var buffer = printServersQueue[printer].shift();
+  if (typeof buffer == 'undefined') {
+    setTimeout(function() {
+      servePrinter(printer, request, response);
+    }, 0);
+    return;
+  }
+
+  if (buffer == null) {
+    response.end();
+  } else {
+    response.write(buffer);
+    setTimeout(function() {
+      servePrinter(printer, request, response);
+    }, 0);
+  }
+}
+
+function restartPrintServers()
+{
+  for (var key in printServers) {
+    var server = printServers[key];
+    server.close();
+    var socket = printServersSockets[key];
+    socket.end();
+
+    printServers[key] = null;
+    printServersSockets[key] = null;
+    printServersQueue[key] = [];
+  }
+
+  for (var key in config.printers) {
+    var port = config.printers[key];
+    var server = net.createServer(function(socket) {
+      if (printServersSockets[key]) {
+        socket.end();
+        return;
+      }
+      printServersSockets[key] = socket;
+      printServersQueue[key] = [];
+      socket.on('data', function(buffer) {
+        printServersQueue[key].push(buffer);
       });
-    }  
+      socket.on('end', function() {
+        printServersSockets[key] = null;
+        printServersQueue[key].push(null);
+      });
+    });
+    server.listen(port, config.listen_address);
+    printServers[key] = server;
+  }
 }
 
 function serveSocket(request, response) {
@@ -95,33 +121,55 @@ function readConfig(request, response) {
     console.log("received config, printers: " + JSON.stringify(config.printers));    
     config.received = true;
     response.end("received");
+    restartPrintServers();
   });
 }
 
-var server = http.createServer(function(request, response) {
-  response.writeHead(200, {'Content-Type': 'application/octet-stream'});
+var server;
 
-  if (request.url == '/config') {
-    readConfig(request, response);
-    return;
-  }
+function start(callback) {
+  server = http.createServer(function(request, response) {
+    response.writeHead(200, {'Content-Type': 'application/octet-stream'});
 
-  if (!config.received) {
-    return;
-  }
+    if (request.url == '/config') {
+      readConfig(request, response);
+      return;
+    }
 
-  var printer_match = request.url.match(printer_regex);
+    if (!config.received) {
+      return;
+    }
 
-  if (printer_match) {
-    // serve printers
-    printer = printer_match[1];
-    servePrinter(printer, request, response);
-  } else {
-    // serve socket requests
-    serveSocket(request, response);
-  }
+    var printer_match = request.url.match(printer_regex);
 
-});
+    if (printer_match) {
+      // serve printers
+      printer = printer_match[1];
+      servePrinter(printer, request, response);
+    } else {
+      // serve socket requests
+      serveSocket(request, response);
+    }
 
-server.listen(config.listen_port, config.listen_address);
-console.log('Server running at http://' + config.listen_address + ':' + config.listen_port);
+  });
+
+  server.listen(config.listen_port, config.listen_address, function() {
+    console.log('Server running at http://' + config.listen_address + ':' + config.listen_port);
+    if (callback) {
+      callback(config.listen_address, config.listen_port);
+    }  
+  });
+}
+
+function stop() {
+  server.close();
+}
+
+exports.start = start;
+exports.stop = stop;
+exports.config = config;
+
+// run alone
+if (!module.parent) {
+  start();
+}
