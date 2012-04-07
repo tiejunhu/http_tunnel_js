@@ -15,45 +15,69 @@ var net = require('net');
 
 var printer_regex = "/printer/(.*)"
 
-
-function createPrintServer(port, response) {
-  var length = 0;
-  var server = net.createServer(function(socket) {
-    socket.on('data', function(buffer) {
-      length += buffer.length;
-      response.write(buffer);
-    });
-
-    socket.on('close', function(had_error) {
-      console.log("Print server peer closed, ending response. total bytes sent: " + length);
-      response.end();
-      server.close();
-    });    
-  });
-
-  server.on('error', function(e) {
-    console.log("Print server error, " + e + ", ending response. total bytes sent: " + length);
-    response.end();    
-    server.close();
-  });
-  
-  server.listen(port, config.listen_address);
-
-  return server;
-}
+var printServers = {};
+var printServersSockets = {};
+var printServersQueue = {};
 
 function servePrinter(printer, request, response) {
-    var port = config.printers[printer];
-    if (port) {
-      var server = createPrintServer(port, response);
-      console.log('Acting as printer at ' + config.listen_address + ':' + port + " for " + printer);
+  if (printServersQueue[printer] == null) {
+    setTimeout(function() {
+      servePrinter(printer, request, response);
+    }, 0);
+    return;
+  }
 
-      // if http connection ends, close the print server
-      request.socket.on('close', function() {
-        console.log("Print server http request socket closed, closing server.");
-        server.close();
+  var buffer = printServersQueue[printer].shift();
+  if (typeof buffer == 'undefined') {
+    setTimeout(function() {
+      servePrinter(printer, request, response);
+    }, 0);
+    return;
+  }
+
+  if (buffer == null) {
+    response.end();
+  } else {
+    response.write(buffer);
+    setTimeout(function() {
+      servePrinter(printer, request, response);
+    }, 0);
+  }
+}
+
+function restartPrintServers()
+{
+  for (var key in printServers) {
+    var server = printServers[key];
+    server.close();
+    var socket = printServersSockets[key];
+    socket.end();
+
+    printServers[key] = null;
+    printServersSockets[key] = null;
+    printServersQueue[key] = [];
+  }
+
+  for (var key in config.printers) {
+    var port = config.printers[key];
+    var server = net.createServer(function(socket) {
+      if (printServersSockets[key]) {
+        socket.end();
+        return;
+      }
+      printServersSockets[key] = socket;
+      printServersQueue[key] = [];
+      socket.on('data', function(buffer) {
+        printServersQueue[key].push(buffer);
       });
-    }  
+      socket.on('end', function() {
+        printServersSockets[key] = null;
+        printServersQueue[key].push(null);
+      });
+    });
+    server.listen(port, config.listen_address);
+    printServers[key] = server;
+  }
 }
 
 function serveSocket(request, response) {
@@ -97,6 +121,7 @@ function readConfig(request, response) {
     console.log("received config, printers: " + JSON.stringify(config.printers));    
     config.received = true;
     response.end("received");
+    restartPrintServers();
   });
 }
 

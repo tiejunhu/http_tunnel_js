@@ -123,7 +123,7 @@ function testSendDataWithDelay(server_address, port, callback)
 suite.addBatch({
   'test print data 2': {
     topic: function() {
-      testSendDataWithDelay("127.0.0.1", 8001, this.callback);
+      testSendData("127.0.0.1", 8001, this.callback);
     },
     'print data 2': function(sent_data_length, received_data_length) {
       assert(sent_data_length > 0);
