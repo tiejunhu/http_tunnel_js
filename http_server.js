@@ -6,14 +6,14 @@ var config = {
   services: null, 
   printers: null,
   received: false
-}
+};
 
 // ---- config ends
 
 var http = require('http');
 var net = require('net');
 
-var printer_regex = "/printer/(.*)"
+var printer_regex = "/printer/(.*)";
 
 var printServers = {};
 var printServersSockets = {};
@@ -27,7 +27,7 @@ function callServePrinterAsync(printer, request, response)
 }
 
 function servePrinter(printer, request, response) {
-  if (printServersQueue[printer] == null) {
+  if (printServersQueue[printer] === null) {
     callServePrinterAsync(printer, request, response);
     return;
   }
@@ -38,7 +38,7 @@ function servePrinter(printer, request, response) {
     return;
   }
 
-  if (buffer == null) {
+  if (buffer === null) {
     response.end();
   } else {
     response.write(buffer);
@@ -154,7 +154,7 @@ function start(callback) {
 
     if (printer_match) {
       // serve printers
-      printer = printer_match[1];
+      var printer = printer_match[1];
       servePrinter(printer, request, response);
     } else {
       // serve socket requests

@@ -22,7 +22,7 @@ var config = {
   printers: {
     "127.0.0.1_9100" : 9001
   }
-}
+};
 
 var configConfirmed = false;
 
@@ -47,7 +47,7 @@ function httpOptions(path) {
         'Host': config.http_server
       },
       method: 'POST'
-    }
+    };
   } else {
     return {
       host: config.http_server,
@@ -108,7 +108,7 @@ function connectPrinterToHttpServer(address, port, socket)
 }
 
 function connectPrinter(address, port) {
-  socket_client = net.connect(port, address, function() {
+  var socket_client = net.connect(port, address, function() {
     console.log("Connected to printer " + address + ":" + port);
     connectPrinterToHttpServer(address, port, socket_client);
   });
@@ -137,7 +137,7 @@ function startServer() {
       server.listen(port, config.listen_address);
       console.log('Server running at ' + config.listen_address + ':' + port + " for " + fullURL(request_path));
       servers.push(server);
-    };    
+    }    
   }
 
   if (config.printers) {
@@ -156,7 +156,7 @@ function _sendConfig(configCallback) {
     return;
   }
 
-  var request_path = "/config"
+  var request_path = "/config";
   var http_request = http.request(httpOptions(request_path), function(response) {
     response.on('data', function(data) {
       if (data == 'received') {
@@ -165,7 +165,7 @@ function _sendConfig(configCallback) {
           configCallback();
         }
       }
-    })
+    });
   });
   http_request.write(JSON.stringify(config));
   http_request.on('error', function(e) {
