@@ -144,8 +144,8 @@ function startServer() {
     for (var address_port in config.printers) {
       var ap = address_port.split('_');
       var address = ap[0];
-      var port = ap[1];
-      connectPrinter(address, port);
+      var pport = ap[1];
+      connectPrinter(address, pport);
     }      
   }
 }
@@ -171,7 +171,6 @@ function _sendConfig(configCallback) {
   http_request.on('error', function(e) {
     console.log("Error occurs _sending config, will retry in 1s. Error is " + e);
   });
-  return http_request;  
 }
 
 var configInterval;
