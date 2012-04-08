@@ -19,19 +19,22 @@ var printServers = {};
 var printServersSockets = {};
 var printServersQueue = {};
 
+function callServePrinterAsync(printer, request, response)
+{
+  process.nextTick(function tickServePrinter() {
+    servePrinter(printer, request, response);
+  });  
+}
+
 function servePrinter(printer, request, response) {
   if (printServersQueue[printer] == null) {
-    setTimeout(function() {
-      servePrinter(printer, request, response);
-    }, 0);
+    callServePrinterAsync(printer, request, response);
     return;
   }
 
   var buffer = printServersQueue[printer].shift();
   if (typeof buffer == 'undefined') {
-    setTimeout(function() {
-      servePrinter(printer, request, response);
-    }, 0);
+    callServePrinterAsync(printer, request, response);
     return;
   }
 
@@ -39,13 +42,11 @@ function servePrinter(printer, request, response) {
     response.end();
   } else {
     response.write(buffer);
-    setTimeout(function() {
-      servePrinter(printer, request, response);
-    }, 0);
+    callServePrinterAsync(printer, request, response);
   }
 }
 
-function restartPrintServers()
+function stopPrintServers()
 {
   for (var key in printServers) {
     var server = printServers[key];
@@ -56,8 +57,11 @@ function restartPrintServers()
     printServers[key] = null;
     printServersSockets[key] = null;
     printServersQueue[key] = [];
-  }
+  }  
+}
 
+function startPrintServers()
+{
   for (var key in config.printers) {
     var port = config.printers[key];
     var server = net.createServer(function(socket) {
@@ -77,7 +81,13 @@ function restartPrintServers()
     });
     server.listen(port, config.listen_address);
     printServers[key] = server;
-  }
+  }  
+}
+
+function restartPrintServers()
+{
+  stopPrintServers();
+  startPrintServers();
 }
 
 function serveSocket(request, response) {
