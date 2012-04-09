@@ -27,7 +27,7 @@ function callServePrinterAsync(printer, request, response)
 }
 
 function servePrinter(printer, request, response) {
-  if (printServersQueue[printer] === null) {
+  if (printServersQueue[printer] == null) {
     callServePrinterAsync(printer, request, response);
     return;
   }
@@ -38,7 +38,7 @@ function servePrinter(printer, request, response) {
     return;
   }
 
-  if (buffer === null) {
+  if (buffer == null) {
     response.end();
   } else {
     response.write(buffer);
