@@ -12,6 +12,7 @@ var config = {
 
 var http = require('http');
 var net = require('net');
+var log = require('./log');
 
 var printer_regex = "/printer/(.*)";
 
@@ -94,24 +95,24 @@ function serveSocket(request, response) {
   var port = config.services[request.url];
   if (port) {
     var socket_client = net.connect(port, config.target_server, function() {
-      console.log("Serving " + request.url + " to " + config.target_server + ":" + port);
+      log.info("Serving " + request.url + " to " + config.target_server + ":" + port);
     });
 
     // end response if cannot connect to remote
     socket_client.on('error', function() {
-      console.log("cannot connect to " + config.target_server + ":" + port + ", ending http connection.");
+      log.warn("cannot connect to " + config.target_server + ":" + port + ", ending http connection.");
       response.end();
     });
 
     socket_client.on('end', function() {
-      console.log("connection to " + config.target_server + ":" + port + " closed, ending http connection.");
+      log.info("connection to " + config.target_server + ":" + port + " closed, ending http connection.");
       response.end();
     });
 
     socket_client.pipe(response); // this will ends response on socket_client close
     request.pipe(socket_client); // this will close socket_client on request ends
   } else {
-    console.log("cannot serve " + request.url);
+    log.error("cannot serve " + request.url);
   }  
 }
 
@@ -126,9 +127,9 @@ function readConfig(request, response) {
       config.services = obj.services;
     }
     config.printers = obj.printers;
-    console.log("received config, target_server: " + config.target_server);
-    console.log("received config, services: " + JSON.stringify(config.services));
-    console.log("received config, printers: " + JSON.stringify(config.printers));    
+    log.info("received config, target_server: " + config.target_server);
+    log.info("received config, services: " + JSON.stringify(config.services));
+    log.info("received config, printers: " + JSON.stringify(config.printers));    
     config.received = true;
     response.end("received");
     restartPrintServers();
@@ -164,7 +165,7 @@ function start(callback) {
   });
 
   server.listen(config.listen_port, config.listen_address, function() {
-    console.log('Server running at http://' + config.listen_address + ':' + config.listen_port);
+    log.info('Server running at http://' + config.listen_address + ':' + config.listen_port);
     if (callback) {
       callback(config.listen_address, config.listen_port);
     }  

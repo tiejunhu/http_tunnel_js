@@ -30,6 +30,7 @@ var configConfirmed = false;
 
 var net = require('net');
 var http = require('http');
+var log = require('./log');
 
 function fullURL(path) {
   return "http://" + config.http_server + ":" + config.http_port + path;
@@ -72,7 +73,7 @@ function createServer(request_path) {
       
       // close socket on http error
       http_request.on('error', function() {
-        console.log("request to " + fullURL(request_path) + " error.");
+        log.error("request to " + fullURL(request_path) + " error.");
         socket.end();
       });
     });
@@ -84,17 +85,17 @@ function createServer(request_path) {
 function connectPrinterToHttpServer(address, port, socket)
 {
   var request_path = "/printer/" + address + "_" + port;
-  console.log("Connecting printer " + address + ":" + port + " to " + fullURL(request_path));
+  log.info("Connecting printer " + address + ":" + port + " to " + fullURL(request_path));
   var http_request = http.request(httpOptions(request_path), function(response) {
     response.pipe(socket);
     response.on('end', function() {
-      console.log("Printer http tunnel response ends, reconnecting.");
+      log.info("Printer http tunnel response ends, reconnecting.");
       connectPrinter(address, port);
     });
   });
 
   http_request.on('error', function(e) {
-    console.log("Error occurs during connection with " + fullURL(request_path) + ", will retry in 1s. Error is " + e);
+    log.error("Error occurs during connection with " + fullURL(request_path) + ", will retry in 1s. Error is " + e);
     configConfirmed = false;
     setTimeout(function() {
       connectPrinterToHttpServer(address, port, socket);
@@ -109,12 +110,12 @@ function connectPrinterToHttpServer(address, port, socket)
 
 function connectPrinter(address, port) {
   var socket_client = net.connect(port, address, function() {
-    console.log("Connected to printer " + address + ":" + port);
+    log.info("Connected to printer " + address + ":" + port);
     connectPrinterToHttpServer(address, port, socket_client);
   });
 
   socket_client.on('error', function(e) {
-    console.log("Connection to printer " + address + ":" + port + " error, reconnect: " + e);
+    log.info("Connection to printer " + address + ":" + port + " error, reconnect: " + e);
     setTimeout(function() {
       connectPrinter(address, port);
     }, 1000);
@@ -135,7 +136,7 @@ function startServer() {
       var port = config.services[request_path];
       var server = createServer(request_path);
       server.listen(port, config.listen_address);
-      console.log('Server running at ' + config.listen_address + ':' + port + " for " + fullURL(request_path));
+      log.info('Server running at ' + config.listen_address + ':' + port + " for " + fullURL(request_path));
       servers.push(server);
     }    
   }
@@ -169,7 +170,7 @@ function _sendConfig(configCallback) {
   });
   http_request.write(JSON.stringify(config));
   http_request.on('error', function(e) {
-    console.log("Error occurs _sending config, will retry in 1s. Error is " + e);
+    log.error("Error occurs _sending config, will retry in 1s. Error is " + e);
   });
 }
 
