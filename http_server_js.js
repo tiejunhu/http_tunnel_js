@@ -80,7 +80,6 @@ function startPrintServers()
       });
     });
     server.listen(port, config.listen_address);
-    console.log('listening at ' + config.listen_address + ':' + port + ' for ' + key);
     printServers[key] = server;
   }  
 }

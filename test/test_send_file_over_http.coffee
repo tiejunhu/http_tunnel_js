@@ -42,7 +42,7 @@ testSendData = (server_address, port, callback) ->
     received_data_length += data.length
     if received_data_length >= sent_data_length
       callback sent_data_length, received_data_length if callback
-      client.end
+      client.end()
 
 vows
   .describe('test_send_file_over_http.coffee')
