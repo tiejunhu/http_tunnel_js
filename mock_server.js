@@ -2,7 +2,7 @@ var net = require('net');
 
 var config = {
   listen_address: null,
-  port: 9100
+  port: 2056
 };
 
 function createServer() {

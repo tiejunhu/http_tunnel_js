@@ -9,18 +9,16 @@ var config = {
   proxy_port: 8080,
   // service url to remote port mapping
   services: {
-    '/service0': 1336,
-    '/service1': 1337
+    '/PageCounter': 2055
   },
   // set services2 to map services to different ports on http_server
   // set services2 as null to use above services
   services2: {
-    '/service0': 1338,
-    '/service1': 1339
+    '/PageCounter': 2056,
   }, 
   // printers url to printer ports mapping
   printers: {
-    "127.0.0.1_9100" : 9001
+    // "127.0.0.1_9100" : 9001
   }
 };
 
@@ -168,7 +166,7 @@ function _sendConfig(configCallback) {
       }
     });
   });
-  http_request.write(JSON.stringify(config));
+  http_request.end(JSON.stringify(config));
   http_request.on('error', function(e) {
     log.error("Error occurs _sending config, will retry in 1s. Error is " + e);
   });
@@ -180,7 +178,7 @@ function sendConfig(configCallback) {
   _sendConfig(configCallback);
   configInterval = setInterval(function() {
     _sendConfig(configCallback);
-  }, 100);
+  }, 1000);
 }
 
 function start(configCallback) {
