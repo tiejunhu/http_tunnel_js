@@ -42,5 +42,8 @@ exports.config = config;
 
 // run alone
 if (!module.parent) {
+  config.callback = function(size) {
+    console.log('received size of ' + size);
+  }
   start();
 }
